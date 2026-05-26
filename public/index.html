@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Passport Pulse | Social Listening Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">P</div>
+        <div>
+          <h1>Passport Pulse</h1>
+          <p>Global social listening centre</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="live"><span></span> Past 24 hours</div>
+        <button class="ghost" id="csv">Export CSV</button>
+        <button class="ghost" id="pdf">Export PDF</button>
+        <button class="primary" id="refresh">Refresh feeds</button>
+      </div>
+    </header>
+    <main class="layout">
+      <aside class="filters" aria-label="Post filters">
+        <h2>Discover</h2>
+        <label class="search">
+          <span>Search posts</span>
+          <input id="q" placeholder="Passport, fraud, renewal...">
+        </label>
+        <div id="filter-fields"></div>
+        <label>
+          Creator / handle
+          <input id="handle" placeholder="@handle">
+        </label>
+        <label>
+          Minimum engagement
+          <input id="minEngagement" type="number" min="0" placeholder="Any">
+        </label>
+        <label>
+          Sort by
+          <select id="sort">
+            <option value="newest">Newest first</option>
+            <option value="engagement">Highest engagement</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </label>
+        <button class="reset" id="reset">Clear filters</button>
+        <section class="connector">
+          <h3>Source coverage</h3>
+          <div id="sources"></div>
+        </section>
+      </aside>
+      <section class="content">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Passport intelligence</p>
+            <h2>Conversations needing attention</h2>
+            <p class="subtext">Categorised, deduplicated and translated social signals collected over the last 24 hours.</p>
+          </div>
+          <p class="stamp" id="stamp"></p>
+        </div>
+        <section class="stats" id="stats" aria-label="Dashboard summary"></section>
+        <div class="results-header">
+          <h2 id="result-title">Topics</h2>
+          <span id="post-count"></span>
+        </div>
+        <div id="clusters" class="clusters" aria-live="polite"></div>
+      </section>
+    </main>
+    <template id="card-template">
+      <article class="card">
+        <div class="card-top">
+          <div class="badges"></div>
+          <div class="age"></div>
+        </div>
+        <h3 class="summary"></h3>
+        <p class="text"></p>
+        <p class="translated hidden"></p>
+        <div class="meta"></div>
+        <div class="card-actions">
+          <select class="language" aria-label="Translate language"></select>
+          <button class="translate">Translate</button>
+          <button class="thread"></button>
+        </div>
+        <div class="duplicates hidden"></div>
+      </article>
+    </template>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
