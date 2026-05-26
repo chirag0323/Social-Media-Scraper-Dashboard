@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Passport Pulse API
+  version: 1.0.0
+  description: Processed social listening API for passport-related posts from the last 24 hours.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/health:
+    get:
+      summary: Service and ingestion health
+      responses:
+        '200':
+          description: Healthy service
+  /api/meta:
+    get:
+      summary: Filter values, languages and provider availability
+      responses:
+        '200':
+          description: Dashboard metadata
+  /api/posts:
+    get:
+      summary: Find processed and clustered posts
+      parameters:
+        - { in: query, name: q, schema: { type: string }, description: Search original, summaries and translated cached text }
+        - { in: query, name: platform, schema: { type: string } }
+        - { in: query, name: country, schema: { type: string } }
+        - { in: query, name: language, schema: { type: string } }
+        - { in: query, name: category, schema: { type: string } }
+        - { in: query, name: sentiment, schema: { type: string } }
+        - { in: query, name: handle, schema: { type: string } }
+        - { in: query, name: minEngagement, schema: { type: integer } }
+        - { in: query, name: sort, schema: { type: string, enum: [newest, oldest, engagement] } }
+      responses:
+        '200':
+          description: Matching topic clusters and their posts
+  /api/refresh:
+    post:
+      summary: Re-run configured data connectors and NLP processing
+      responses:
+        '200':
+          description: Refresh result and connector errors
+  /api/translate:
+    post:
+      summary: Translate a post to one supported language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [postId, language]
+              properties:
+                postId: { type: string }
+                language: { type: string, enum: [en, hi, pa, es, fr, de, ar, zh, ru, ja] }
+      responses:
+        '200':
+          description: Translation plus method used
+        '404':
+          description: Unknown post
+  /api/export.csv:
+    get:
+      summary: Download posts matching the same query filters as CSV
+      responses:
+        '200':
+          description: CSV document

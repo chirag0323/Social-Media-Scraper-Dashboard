@@ -1,0 +1,24 @@
+{
+  "info": {
+    "name": "Passport Pulse API",
+    "_postman_id": "0d4bb8ee-e10c-4a61-9a80-c154de81faaa",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:3000" }],
+  "item": [
+    { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/api/health" } },
+    { "name": "Metadata", "request": { "method": "GET", "url": "{{baseUrl}}/api/meta" } },
+    { "name": "Filtered posts", "request": { "method": "GET", "url": "{{baseUrl}}/api/posts?category=Appointments&sort=engagement" } },
+    { "name": "Refresh live connectors", "request": { "method": "POST", "url": "{{baseUrl}}/api/refresh" } },
+    {
+      "name": "Translate post",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"postId\":\"x-001\",\"language\":\"hi\"}" },
+        "url": "{{baseUrl}}/api/translate"
+      }
+    },
+    { "name": "Export CSV", "request": { "method": "GET", "url": "{{baseUrl}}/api/export.csv?sentiment=Negative" } }
+  ]
+}
