@@ -36,6 +36,8 @@ function renderMeta(meta) {
   $("#sources").innerHTML = meta.sources.map((source) =>
     `<div class="source" title="${source.requirement}"><span>${source.platform}</span><b class="${source.mode === "live" ? "live-status" : "demo"}">${source.mode}</b></div>`).join("");
   $("#stamp").textContent = `Updated ${new Date(meta.refreshedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  $("#ai-pill").textContent = meta.nlp.label;
+  $("#ai-pill").title = meta.nlp.error || (meta.nlp.model ? `Model: ${meta.nlp.model}` : "Set OPENAI_API_KEY for model enrichment");
 }
 
 function renderStats(data) {

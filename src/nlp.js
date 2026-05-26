@@ -45,6 +45,23 @@ export function summary(text, category) {
   return sentence.split(" ").slice(0, 30).join(" ");
 }
 
+export function withinLast24Hours(post) {
+  const age = Date.now() - Date.parse(post.publishedAt);
+  return age >= 0 && age <= 24 * 60 * 60_000;
+}
+
+export function ruleBasedEnrichment(post) {
+  const category = categorise(post.text);
+  return {
+    ...post,
+    category,
+    sentiment: sentiment(post.text),
+    summary: summary(post.text, category),
+    meaningful: !detectGibberish(post),
+    nlpMethod: "Rules fallback"
+  };
+}
+
 export function tokens(text) {
   return new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [])
     .filter((token) => token.length > 2 && !stopWords.has(token)));
@@ -56,21 +73,33 @@ function similarity(a, b) {
   return either ? both / either : 0;
 }
 
-export function processPosts(rawPosts) {
-  const accepted = rawPosts
-    .filter((post) => !detectGibberish(post))
-    .filter((post) => Date.now() - Date.parse(post.publishedAt) <= 24 * 60 * 60_000)
-    .map((post) => {
-      const category = categorise(post.text);
-      return { ...post, category, sentiment: sentiment(post.text), summary: summary(post.text, category) };
-    })
-    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+export function cosineSimilarity(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || !a.length) return 0;
+  let dot = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    dot += a[index] * b[index];
+    magnitudeA += a[index] ** 2;
+    magnitudeB += b[index] ** 2;
+  }
+  return magnitudeA && magnitudeB ? dot / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB)) : 0;
+}
 
+export function clusterPosts(posts) {
+  const accepted = posts
+    .filter((post) => post.meaningful !== false)
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
   const clusters = [];
   for (const post of accepted) {
     const postTokens = tokens(post.text);
-    const existing = clusters.find((cluster) =>
-      cluster.category === post.category && similarity(postTokens, cluster.tokens) >= 0.3);
+    const existing = clusters.find((cluster) => {
+      if (cluster.category !== post.category) return false;
+      if (post.embedding && cluster.leadEmbedding) {
+        return cosineSimilarity(post.embedding, cluster.leadEmbedding) >= 0.82;
+      }
+      return similarity(postTokens, cluster.tokens) >= 0.3;
+    });
     if (existing) {
       existing.posts.push(post);
       existing.engagement += post.engagement;
@@ -82,6 +111,7 @@ export function processPosts(rawPosts) {
         engagement: post.engagement,
         platforms: new Set([post.platform]),
         tokens: postTokens,
+        leadEmbedding: post.embedding,
         posts: [post]
       });
     }
@@ -90,7 +120,16 @@ export function processPosts(rawPosts) {
     ...cluster,
     platforms: [...cluster.platforms],
     tokens: undefined,
+    leadEmbedding: undefined,
     postCount: cluster.posts.length,
     lead: cluster.posts[0]
   }));
+}
+
+export function processPosts(rawPosts) {
+  const accepted = rawPosts
+    .filter(withinLast24Hours)
+    .map(ruleBasedEnrichment)
+    .filter((post) => post.meaningful);
+  return clusterPosts(accepted);
 }

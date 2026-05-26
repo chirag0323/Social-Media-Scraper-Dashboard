@@ -8,7 +8,8 @@ Passport Pulse is a clean, multilingual social listening dashboard for passport-
 
 - A responsive dashboard with platform, country, original-language, category, sentiment, creator, engagement and time-order controls.
 - Search across post text, summaries, and translations created during the session.
-- NLP processing for topical categorisation, sentiment, concise summaries, spam/gibberish rejection, and near-duplicate clustering.
+- Model-backed multilingual NLP when configured: factual 20-30 word summaries, topical classification, sentiment, meaningful/spam decisions, and embedding-based semantic clustering.
+- Deterministic rule-based NLP fallback when no AI credential is configured, keeping the demo usable offline.
 - One-click translation targets for English, Hindi, Punjabi, Spanish, French, German, Arabic, Chinese, Russian and Japanese.
 - Export of the filtered view as CSV and browser-quality PDF (`Export PDF` opens the system print/PDF dialog).
 - A refresh endpoint with live Reddit and YouTube connectors when configured, plus a normalized webhook for approved enterprise collectors.
@@ -36,14 +37,29 @@ Optional configuration variables are documented in `.env.example`. The server re
 $env:ENABLE_REDDIT="true"; npm start
 ```
 
+To activate actual AI/NLP enrichment, provide an OpenAI API key before starting the app, then click **Refresh feeds**:
+
+```powershell
+$env:OPENAI_API_KEY="your-api-key"
+$env:OPENAI_NLP_MODEL="gpt-5.4-mini"
+$env:OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
+npm start
+```
+
+The dashboard label changes from `Rules fallback` to `AI enriched (...)` after a successful model-backed refresh. Post text is sent to the configured OpenAI API only when `OPENAI_API_KEY` is present.
+
 ## Architecture
 
 ```mermaid
 flowchart LR
   A["Approved platform APIs<br/>Reddit / YouTube / webhook"] --> B["Provider adapters<br/>normalize post schema"]
   D["24-hour demo stream"] --> B
-  B --> C["NLP pipeline<br/>spam filter, category,<br/>sentiment, summary, clustering"]
-  C --> E["REST API<br/>query, translate, export, refresh"]
+  B --> C["NLP orchestrator<br/>24-hour restriction"]
+  C --> M["OpenAI Responses API<br/>multilingual summary, category,<br/>sentiment, meaningful/spam"]
+  C --> R["Rules fallback<br/>offline operation"]
+  M --> V["Embeddings API<br/>semantic clustering"]
+  R --> E
+  V --> E["REST API<br/>query, translate, export, refresh"]
   T["LibreTranslate<br/>(optional)"] --> E
   E --> F["Web dashboard<br/>filters, search, cards,<br/>CSV / print-to-PDF"]
 ```
@@ -51,8 +67,8 @@ flowchart LR
 ## Data Flow
 
 1. `POST /api/refresh` gathers configured live posts and regenerates rolling demo posts for offline evaluation.
-2. Each normalized item is restricted to the last 24 hours, rejected if likely promotional/gibberish, then annotated with category, sentiment and a short summary.
-3. Token-similar posts in the same category are grouped into one topic card while preserving the underlying thread posts.
+2. Each normalized item is restricted to the last 24 hours. With `OPENAI_API_KEY`, the Responses API makes multilingual meaningful/spam decisions and generates an allowed category, sentiment and factual English summary for each post.
+3. With AI enabled, embeddings group semantically similar posts even when written in different languages. Without credentials, local spam/category/sentiment/summary and token clustering rules are used as an explicit fallback.
 4. `GET /api/posts` applies dashboard filters and sorting on processed posts, then produces clusters for the selected result set.
 5. `POST /api/translate` uses a configured LibreTranslate service in production. In offline demo mode it returns a labelled glossary preview so all target-language interactions can be tested.
 6. CSV export honors active filters. PDF uses a print-optimized dashboard stylesheet.
@@ -78,7 +94,7 @@ Run the unit tests:
 npm test
 ```
 
-The in-memory store is intentionally simple for a runnable demonstration. For production volumes, put raw posts in a queue (Kafka/SQS), run enrichment workers asynchronously, store posts and embeddings in PostgreSQL with `pgvector` or OpenSearch, cache translations, and paginate the API. Replace rule-based annotations with audited multilingual classifiers or an LLM enrichment worker while retaining the same endpoint contract.
+The in-memory store is intentionally simple for a runnable demonstration. For production volumes, put raw posts in a queue (Kafka/SQS), run the model-backed enrichment asynchronously in workers, store posts and embeddings in PostgreSQL with `pgvector` or OpenSearch, cache translations, and paginate the API.
 
 ## Deployment
 

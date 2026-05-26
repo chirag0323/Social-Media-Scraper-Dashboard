@@ -3,7 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { seedPosts } from "./seed.js";
-import { processPosts } from "./nlp.js";
+import { clusterPosts, processPosts } from "./nlp.js";
+import { enrichPosts, nlpStatus } from "./ai-nlp.js";
 import { fetchLivePosts, platformStatus } from "./providers.js";
 import { languages, translate } from "./translation.js";
 
@@ -13,6 +14,8 @@ const translations = new Map();
 let rawPosts = seedPosts();
 let refreshedAt = new Date().toISOString();
 let providerErrors = [];
+let processedClusters = processPosts(rawPosts);
+let enrichmentRun = { mode: "rules", label: "Rules fallback" };
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -32,7 +35,7 @@ async function body(request) {
 }
 
 function allPosts() {
-  return processPosts(rawPosts).flatMap((cluster) => cluster.posts);
+  return processedClusters.flatMap((cluster) => cluster.posts);
 }
 
 function filteredPosts(params) {
@@ -56,10 +59,18 @@ function filteredPosts(params) {
 }
 
 function sortedClusters(posts, sort) {
-  const clusters = processPosts(posts);
+  const clusters = clusterPosts(posts);
   if (sort === "engagement") return clusters.sort((a, b) => b.engagement - a.engagement);
   if (sort === "oldest") return clusters.sort((a, b) => Date.parse(a.lead.publishedAt) - Date.parse(b.lead.publishedAt));
   return clusters;
+}
+
+function publicClusters(clusters) {
+  return clusters.map((cluster) => ({
+    ...cluster,
+    posts: cluster.posts.map(({ embedding, ...post }) => post),
+    lead: (({ embedding, ...post }) => post)(cluster.lead)
+  }));
 }
 
 function csv(posts) {
@@ -70,26 +81,31 @@ function csv(posts) {
 
 async function api(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { status: "ok", refreshedAt, postCount: allPosts().length });
+    return json(response, 200, { status: "ok", refreshedAt, postCount: allPosts().length, nlp: nlpStatus(enrichmentRun) });
   }
   if (request.method === "GET" && url.pathname === "/api/meta") {
     const posts = allPosts();
     const values = (key) => [...new Set(posts.map((post) => post[key]))].sort();
     return json(response, 200, {
-      refreshedAt, providerErrors, sources: platformStatus(), languages,
+      refreshedAt, providerErrors, sources: platformStatus(), languages, nlp: nlpStatus(enrichmentRun),
       filters: { platforms: values("platform"), countries: values("country"), postLanguages: values("language"), categories: values("category"), sentiments: values("sentiment") }
     });
   }
   if (request.method === "GET" && url.pathname === "/api/posts") {
     const posts = filteredPosts(url.searchParams);
-    return json(response, 200, { total: posts.length, clusters: sortedClusters(posts, url.searchParams.get("sort")) });
+    return json(response, 200, { total: posts.length, clusters: publicClusters(sortedClusters(posts, url.searchParams.get("sort"))) });
   }
   if (request.method === "POST" && url.pathname === "/api/refresh") {
     const live = await fetchLivePosts();
     rawPosts = [...seedPosts(), ...live.posts];
     providerErrors = live.errors;
+    const enrichment = await enrichPosts(rawPosts);
+    processedClusters = enrichment.clusters;
+    enrichmentRun = enrichment.run;
     refreshedAt = new Date().toISOString();
-    return json(response, 200, { addedLivePosts: live.posts.length, errors: live.errors, refreshedAt });
+    return json(response, 200, {
+      addedLivePosts: live.posts.length, errors: live.errors, refreshedAt, nlp: nlpStatus(enrichmentRun)
+    });
   }
   if (request.method === "POST" && url.pathname === "/api/translate") {
     const input = await body(request);

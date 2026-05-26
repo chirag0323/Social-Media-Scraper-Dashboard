@@ -8,13 +8,13 @@ servers:
 paths:
   /api/health:
     get:
-      summary: Service and ingestion health
+      summary: Service, ingestion and current NLP enrichment health
       responses:
         '200':
           description: Healthy service
   /api/meta:
     get:
-      summary: Filter values, languages and provider availability
+      summary: Filter values, languages, provider availability and NLP mode
       responses:
         '200':
           description: Dashboard metadata
@@ -36,7 +36,7 @@ paths:
           description: Matching topic clusters and their posts
   /api/refresh:
     post:
-      summary: Re-run configured data connectors and NLP processing
+      summary: Re-run connectors and model-backed NLP processing when configured
       responses:
         '200':
           description: Refresh result and connector errors
