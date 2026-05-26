@@ -10,6 +10,7 @@ import { languages, translate } from "./translation.js";
 
 const root = fileURLToPath(new URL("../public/", import.meta.url));
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || "0.0.0.0";
 const translations = new Map();
 let rawPosts = seedPosts();
 let refreshedAt = new Date().toISOString();
@@ -153,6 +154,6 @@ createServer(async (request, response) => {
   } catch (error) {
     json(response, 500, { error: "Server error", detail: error.message });
   }
-}).listen(port, () => {
-  console.log(`Passport Pulse listening at http://localhost:${port}`);
+}).listen(port, host, () => {
+  console.log(`Passport Pulse listening at http://${host}:${port}`);
 });

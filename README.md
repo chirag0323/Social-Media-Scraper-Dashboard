@@ -96,13 +96,14 @@ npm test
 
 The in-memory store is intentionally simple for a runnable demonstration. For production volumes, put raw posts in a queue (Kafka/SQS), run the model-backed enrichment asynchronously in workers, store posts and embeddings in PostgreSQL with `pgvector` or OpenSearch, cache translations, and paginate the API.
 
-## Deployment
+## Free Deployment On Render
 
-Deploy as a Node web service on Render, Railway, Fly.io, Azure App Service or similar:
+This repository includes `render.yaml` for a free Render Node web service deployment.
 
-1. Push this directory to a GitHub repository.
-2. Create a web service using `npm start`, Node 18+, and expose port `3000` or the platform-provided `PORT`.
-3. Add credentials as encrypted environment variables; never commit API keys.
-4. Set `LIBRETRANSLATE_URL` for complete arbitrary-text translations and configure approved social-source access.
+1. Sign in to [Render](https://render.com/) with GitHub and authorize this repository.
+2. Click **New +** and select **Blueprint**.
+3. Select `chirag0323/Social-Media-Scraper-Dashboard` and deploy the detected `render.yaml` configuration.
+4. When the deployment finishes, open the generated `https://...onrender.com` URL.
+5. In Render environment variables, optionally add `OPENAI_API_KEY`, `YOUTUBE_API_KEY`, `ENABLE_REDDIT=true`, or `LIBRETRANSLATE_URL`, then redeploy.
 
-Creating a public GitHub repository and a publicly reachable demo requires the owner's GitHub and hosting account authorization; the application is ready for those two account-bound deployment steps.
+The app works immediately in demo and rules-fallback mode without secrets. Do not commit API keys to GitHub. On Render's free web-service tier, the service spins down after a period of inactivity and can take time to wake on the next request.
